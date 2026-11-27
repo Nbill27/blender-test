@@ -119,6 +119,81 @@ sebagai Nbill27 (push MCP gagal 403 sebelumnya, sama seperti tes drone).
   perkiraan, belum terukur untuk scene ini.
 - Bukti: workflow di `gh-push/`, `build_lustig.py`.
 
+## v2 — Framing fix + 10 detik (2026-11-27, perbaikan atas pilihan bill)
+
+### Cacat v1 yang diperbaiki
+- v1 frame 90: Lustig keluar frame kanan bawah, hanya topi dan kepala
+  kelihatan. Akar masalah: dia jalan KE ARAH kamera (y -8 -> -13)
+  sementara kamera juga dolly-in (y -25 -> -22.5); jarak mengecil dua
+  kali, dia membesar cepat.
+- Perbaikan: jalur diubah jadi MENYAMPING kiri -> kanan melintasi plaza
+  (x -3.0 -> +3.0 di y=-6, di atas jalan Path, jarak ke kamera konstan),
+  menghadap +X. `walker()` dapat mode `sideways=True` (kaki/lengan
+  berjajar sepanjang sumbu Y, badan diputar), `walk_cycle()` dapat
+  `axis='x'` (kaki mengayun di bidang X-Z, rotasi sumbu Y). Kamera
+  dolly-in lebih lembut dan mundur sedikit: (0,-26,3.2) -> (0,-25,3.6)
+  -> (0,-24,4.0), x tetap 0, tanpa drift lateral. Menara TIDAK diubah.
+- Awan/burung/bendera/beacon diperpanjang ke frame 300 dengan total
+  perpindahan yang sama (awan +6, burung +16, bendera pola 11 frame,
+  beacon 15 keyframe). Pejalan kaki latar juga 1-300.
+
+### Verifikasi lokal v2 — GATE LOLOS di revisi pertama (tidak perlu revisi ke-2)
+- Build: `build_lustig_v2.py`, Blender 4.5.3, 5 detik, CHECK posisi
+  terverifikasi: Lustig (-3.0,-6.0) -> (-0.01,-6.0) -> (3.0,-6.0),
+  kamera (0,-26,3.2) -> (0,-25,3.6) -> (0,-24,4.0). y Lustig konstan.
+- Catatan: render lokal sempat gagal `Couldn't open libEGL.so.1`;
+  diperbaiki dengan `sudo apt-get update && apt-get install -y libegl1
+  libegl-mesa0` (paket ini hilang di VM, sebelumnya ada saat tes kandidat).
+- Still dibaca sendiri, semua 1080x1920:
+  - `renders-v2/still_0001.png` (56 detik): Lustig di kiri, UTUH,
+    bertopi, kaki sedang melangkah, di depan kaki menara kiri. Menara
+    dominan di tengah, burung di kiri, matahari kiri.
+  - `renders-v2/still_0150.png` (49 detik): Lustig di TENGAH di bawah
+    arch, UTUH, badan dan kaki lengkap, topi terlihat. Dua pejalan
+    kaki latar di kiri dan kanan arch.
+  - `renders-v2/still_0300.png` (48 detik): Lustig di kanan, UTUH,
+    kaki sedang melangkah, topi dan kepala lengkap, tidak terpotong
+    tepi bawah atau kanan. Burung sudah bergeser ke kanan, awan hanyut.
+- Cacat jujur yang TETAP ada dari v1 (bukan target perbaikan ini):
+  langit datar tanpa gradasi, matahari krem pucat, awan bentuk pil,
+  wajah Lustig polos tanpa mata/bekas luka, kepala lampu putih kotak.
+- Waktu lokal per frame v2: 56, 49, 48 detik (rata-rata ~51 detik).
+  Proyeksi VM 300 frame sekitar 4,2 jam; proyeksi GitHub sekitar
+  11-14 detik/frame (angka chunk normal run v1) jadi wall time sekitar
+  15-20 menit untuk 5 job x 60 frame, atau sekitar 30 menit kalau ada
+  satu chunk pencilan lambat seperti chunk 1 di run v1 (86,72 detik/frame).
+
+### Skill (tetap dipakai semua, sama seperti v1)
+- gaya_video_bill, cartoon_3d_short, anatomy, anatomy_reveal,
+  hairline_create/adopt, motion_design, remotion_best_practices:
+  tidak ada yang berubah dari v1 kecuali jalur Lustig dan kamera
+  (motion_design) dan frame check 1/150/300 (remotion_best_practices).
+- WhisperX/librosa: TIDAK BERLAKU, tes tetap bisu 10 detik tanpa VO/audio.
+- resumable_long_renders: 5 chunk x 60 frame di GitHub Actions.
+
+### Staging GitHub v2 — SIAP, BELUM di-push (butuh browser sebagai Nbill27)
+- `gh-push-v2/.github/workflows/blender-lustig-test-10s.yml` — nama
+  "Blender Lustig Test 10s", workflow_dispatch, 5 job paralel
+  (1-60, 61-120, 121-180, 181-240, 241-300), timeout 120 menit,
+  Blender 4.5.3 LTS, EEVEE, LIBGL_ALWAYS_SOFTWARE=1, artifact
+  `blender-lustig-10s-chunk-N`, retention 7 hari. YAML divalidasi parser.
+- `gh-push-v2/lustig-test/build_lustig_v2.py` — script yang diperbaiki.
+- `gh-push-v2/lustig-test/README.md` — penjelasan v2.
+- `gh-push-v2/lustig-test/SKILL_CHECKLIST.md` — salinan checklist ini.
+- Jangan upload `scene_lustig_v2.blend`. Jangan sentuh repo
+  3d-rendering atau PR #13. Jangan push lewat MCP kalau gagal 403.
+
+## Langkah berikutnya (butuh browser sebagai Nbill27)
+1. Upload 4 file dari `gh-push-v2/` ke repo https://github.com/Nbill27/blender-test,
+   branch main, path persis `.github/workflows/blender-lustig-test-10s.yml`,
+   `lustig-test/build_lustig_v2.py`, `lustig-test/README.md`,
+   `lustig-test/SKILL_CHECKLIST.md`. Jangan upload `scene_lustig_v2.blend`. Jangan sentuh repo 3d-rendering, jangan merge PR #13.
+2. Jalankan workflow "Blender Lustig Test 10s" dari main, catat waktu mulai/selesai
+   tiap job dan isi timing-lustig-10s-chunk-0..4.txt.
+3. Unduh 5 artifact, rakit klip MP4 10 detik 1080x1920 30 fps, verifikasi
+   ffprobe (300 frame, 10.000 detik), baca 3 still (awal, tengah, akhir),
+   buktikan Lustig utuh di semua frame dan menara tetap di tengah.
+
 ## File
 - `build_lustig.py` — scene builder (Blender 4.5.3, EEVEE_NEXT 16 sample)
 - `scene_lustig.blend` — hasil build lokal (1,7 MB, TIDAK di-push)
