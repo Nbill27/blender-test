@@ -1,0 +1,100 @@
+name: Blender Lustig Test
+
+# Tes kecil Blender 3 detik (90 frame, 1080x1920, 30 fps, EEVEE) :
+# adegan penutup Lustig, Beat 3 L10: "He was never arrested for the
+# Eiffel Tower. And the tower is still standing." Menara Eiffel di senja
+# hari, jalan Paris, Lustig berjalan ke arah kamera.
+# Scene TIDAK di-push sebagai .blend biner; tiap job membangun scene-nya
+# sendiri dari lustig-test/build_lustig.py dengan Blender 4.5.3 LTS.
+# 5 job paralel, tiap job 18 frame, jauh di bawah batas 1 job 6 jam.
+# Trigger manual dari Actions tab (workflow_dispatch), hanya di main.
+# BUKAN untuk video 60 detik penuh. Jangan upload ke YouTube.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - job: 0
+            start: 1
+            end: 18
+          - job: 1
+            start: 19
+            end: 36
+          - job: 2
+            start: 37
+            end: 54
+          - job: 3
+            start: 55
+            end: 72
+          - job: 4
+            start: 73
+            end: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install EGL / Mesa deps + ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libegl1 libegl-mesa0 libgl1 libglib2.0-0 libxkbcommon0 ffmpeg
+
+      - name: Cache Blender 4.5.3
+        id: cache-blender
+        uses: actions/cache@v4
+        with:
+          path: ~/blender-4.5.3-linux-x64
+          key: blender-4.5.3-linux-x64
+
+      - name: Download Blender 4.5.3 LTS
+        if: steps.cache-blender.outputs.cache-hit != 'true'
+        run: |
+          curl -fL https://download.blender.org/release/Blender4.5/blender-4.5.3-linux-x64.tar.xz -o /tmp/blender.tar.xz
+          tar -xf /tmp/blender.tar.xz -C ~
+
+      - name: Blender version
+        run: ~/blender-4.5.3-linux-x64/blender --version
+
+      - name: Build scene from build_lustig.py
+        run: ~/blender-4.5.3-linux-x64/blender -b --python lustig-test/build_lustig.py
+
+      - name: Render frames ${{ matrix.start }}-${{ matrix.end }}
+        run: |
+          START=$(date +%s)
+          ~/blender-4.5.3-linux-x64/blender -b lustig-test/scene_lustig.blend -o lustig-test/renders/frame_ -s ${{ matrix.start }} -e ${{ matrix.end }} -a
+          END=$(date +%s)
+          DUR=$((END - START))
+          PER=$(python3 -c "print(f'{$DUR / 18:.2f}')")
+          echo "job=${{ matrix.job }} frames=${{ matrix.start }}-${{ matrix.end }} render_seconds=$DUR seconds_per_frame=$PER" | tee lustig-test/timing-lustig-chunk-${{ matrix.job }}.txt
+
+      - name: Verify chunk (must be exactly 18 PNG, 1080x1920)
+        run: |
+          COUNT=$(ls lustig-test/renders/frame_*.png | wc -l)
+          echo "png_count=$COUNT"
+          test "$COUNT" = "18"
+          python3 -c "
+          import glob, struct
+          for p in sorted(glob.glob('lustig-test/renders/frame_*.png')):
+              with open(p, 'rb') as f:
+                  d = f.read(33)
+                  w, h = struct.unpack('>II', d[16:24])
+                  assert (w, h) == (1080, 1920), (p, w, h)
+          print('all 18 PNG are 1080x1920')
+          "
+
+      - name: Upload chunk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-lustig-3s-chunk-${{ matrix.job }}
+          path: |
+            lustig-test/renders/
+            lustig-test/timing-lustig-chunk-${{ matrix.job }}.txt
+          retention-days: 7
