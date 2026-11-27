@@ -1,0 +1,141 @@
+# SKILL_CHECKLIST.md — Tes Blender adegan penutup Lustig (3 detik)
+
+Judul: "The Con Man Who Sold the Eiffel Tower Twice" — Victor Lustig, Paris 1925.
+Adegan: penutup Beat 3, L10: "He was never arrested for the Eiffel Tower.
+And the tower is still standing." Menara Eiffel di senja hari, jalan Paris,
+Lustig berjalan ke arah kamera.
+Folder tes: `~/workspace/motion-studio/tools/blender-test/lustig-test/`
+Repo GitHub: https://github.com/Nbill27/blender-test (workflow baru
+`blender-lustig-test.yml`, BUKAN repo 3d-rendering, PR #13 di sana TIDAK di-merge)
+Format: 90 frame, 1080x1920 vertikal, 30 fps, EEVEE_NEXT 16 sample, AgX.
+Status: scene lokal selesai dan still frame 45 lolos gate (2 revisi).
+Workflow GitHub SIAP di `gh-push/`, BELUM di-push — butuh browser task
+sebagai Nbill27 (push MCP gagal 403 sebelumnya, sama seperti tes drone).
+
+## Fakta yang dipakai (SCRIPT.md, terverifikasi, tidak dikarang)
+- Mei 1925, Paris. Menara dibangun untuk Pameran Dunia 1889, 7.000 ton besi.
+- Andre Poisson membayar sekitar 70.000 franc. Lustig kabur ke Austria,
+  kembali, kabur ke Amerika. Tidak pernah ditangkap karena Eiffel.
+  Menara masih berdiri.
+- Perbedaan yang disengaja vs Remotion shot 10: di Remotion Lustig sudah
+  pergi di shot penutup; di tes Blender ini figur Lustig dihadirkan berjalan
+  sebagai figur uji gerakan kaki dan kamera, atas instruksi brief tes.
+  Bukan klaim fakta baru, tidak ada dialog/kutipan yang ditambah.
+
+## Tahap 0. gaya_video_bill + desain.md — SELESAI
+- Dibaca: `~/workspace/custom-skills/gaya_video_bill/SKILL.md` dan
+  `~/workspace/motion-studio/desain.md`.
+- Diterapkan: vertikal 9:16 1080x1920 30 fps; adegan PADAT dan ramai
+  (menara + 3 gedung + 3 pohon + 4 lampu + 2 bangku + 2 bendera + 4 pejalan
+  kaki + 3 burung + 4 awan + matahari), bukan latar kosong; gerakan terlihat
+  jelas dari detik pertama (dolly-in kamera + Lustig berjalan + burung
+  terbang + awan hanyut + bendera berkibar + beacon berkedip); zona aman
+  bawah dijaga, tidak ada teks layar di tes ini.
+- Bukti: `build_lustig.py`, `renders/still_0045.png`, `ref/lustig_55s.png`,
+  `ref/lustig_57s.png`, `ref/lustig_59s.png`.
+
+## Tahap 1. cartoon_3d_short — SELESAI
+- Karakter bean-head stylized: kepala bulat besar (skala 1.12), badan kecil,
+  topi Lustig, jas gelap. Bukan fotorealistis.
+- Kamera dinamis: dolly-in (0,-25,3.2) -> (0,-22.5,4.2), Track To menara
+  (0,0,13), lensa 22. Satu shot 3 detik, tidak ada hard cut di dalam tes.
+- Dunia 3D padat: plaza Paris, jalan, gedung oranye kanan, pohon, lampu.
+- Bukti: `build_lustig.py` (walker, kamera), `renders/still_0045.png`.
+
+## Tahap 2. anatomy — SELESAI
+- Objek kunci: Menara Eiffel, acuan `~/workspace/motion-studio/projects/lustig/anatomy/eiffel.js`
+  dan `eiffel-tower.html` (tidak ditempel mentah, dipakai sebagai acuan bentuk).
+- 4 tier sesuai eiffel.js (skala /4): tier 1 z 0-8.5 kaki 5.0->3.2,
+  tier 2 z 8.5-15.5 kaki 3.2->2.0, tier 3 z 15.5-21 kaki 2.0->1.1,
+  spire z 21-26, antena ke 28, beacon di 28.7.
+- Bagian: 12 kaki miring, ring balok, 3 dek + railing, arch depan-belakang
+  (kurva sinus seperti archPts di eiffel.js), X-bracing, spire kerucut 4 sisi.
+- Gerakan mengikuti mekanisme: beacon berkedip (skala 1.0-1.5),
+  bendera berkibar (rotasi sinus), burung terbang, awan hanyut.
+- Bukti: `build_lustig.py` (TIERS, arch, beacon), `renders/still_0045.png`.
+
+## Tahap 3. anatomy_reveal — SELESAI
+- Struktur tier terbaca terpisah: tiap dek menonjol sebagai pelat + railing,
+  X-bracing tiap tier terlihat, spire terpisah dari tier 3, antena terpisah.
+- Bukti: `renders/still_0045.png` — 3 dek, X-bracing, spire, dan beacon
+  semuanya terlihat dan terbedakan.
+
+## Tahap 4. hairline_create + hairline_adopt — SELESAI
+- Garis tipis struktur: X-bracing 0.16, arch rib 0.28, railing 0.06,
+  jendela gedung, tiang lampu dan bendera — garis yang menjawab gerakan
+  kamera (parallax antar garis depan dan belakang saat dolly-in).
+- Bukti: `build_lustig.py` (beam, brace), `renders/still_0045.png`.
+
+## Tahap 5. motion_design — SELESAI
+- Timing/easing: semua keyframe gerak interpolasi BEZIER; dolly-in kamera
+  ease (3 keyframe, makin pelan di akhir); walk cycle kaki bergantian tiap
+  11 frame (kaki kanan lalu kiri mengangkat, bukan bareng — sesuai aturan
+  jalan baru bill 27 Nov 2026: tidak boleh goyang kiri-kanan, badan maju
+  ke depan, tanpa drift lateral kamera; kamera di sini hanya maju lurus
+  di sumbu Y, x tetap 0); lengan berlawanan dengan kaki; topi dan jas
+  ikut badan (follow-through, tidak tertinggal).
+- Prinsip Disney: anticipation (Lustig condong maju), follow-through
+  (topi/badan ikut), squash tidak dipakai karena figur blocky kaku.
+- Bukti: `build_lustig.py` (walk_cycle, key_loc/key_rot),
+  CHECK frame 1/45/90: Lustig (1.8,-8.0) -> (2.2,-10.47) -> (2.6,-13.0),
+  kamera (0,-25,3.2) -> (0,-23.8,3.7) -> (0,-22.5,4.2).
+
+## Tahap 6. remotion_best_practices — SELESAI (tahap lokal)
+- Alur preview -> frame check -> revisi -> verifikasi, sama seperti
+  workflow Remotion Lustig.
+- Still lokal frame 45 dibaca sendiri, 2 revisi:
+  - v1: langit abu datar, pita horizon krem terbaca seperti dinding,
+    awan pil besar di tengah menara.
+  - Revisi 1: horizon dihapus, langit dihangatkan, matahari ke dalam frame,
+    awan dikecilkan dan dinaikkan.
+  - v2: matahari jadi cakram putih raksasa terpotong di tepi kiri.
+  - Revisi 2: matahari dikecilkan (r 2.8 -> 1.6), warna dihangatkan.
+  - v3 (final lokal): gate lolos — menara dan Lustig jelas, tidak terpotong.
+- Cacat jujur yang tersisa di still final: langit datar tanpa gradasi
+  (world EEVEE satu warna); matahari krem pucat, bukan oranye hangat;
+  awan masih bentuk pil/elips; sepertiga bawah frame masih agak kosong;
+  besi menara mauve pucat, bukan siluet gelap; wajah Lustig polos
+  (tanpa mata/bekas luka); kepala lampu putih kotak.
+- Verifikasi GitHub (chunk, ffprobe, 3 still) BELUM dilakukan — menunggu
+  push dan run workflow lewat browser.
+- Bukti: `renders/still_0045.png` (v3 final), `build_lustig.py`.
+
+## Tahap 7. WhisperX dan librosa — TIDAK BERLAKU
+- TIDAK BERLAKU karena tes ini bisu 3 detik, tanpa VO baru dan tanpa
+  audio apa pun. Tidak ada yang perlu ditranskripsi (WhisperX) atau
+  dianalisis (librosa). VO Casper Lustig yang sudah ada tidak dipakai
+  ulang di tes ini.
+
+## Tahap 8. resumable_long_renders — SELESAI (desain), run BELUM
+- Render dipecah 5 chunk x 18 frame, tiap chunk bisa diulang sendiri
+  tanpa mengulang 90 frame — sama seperti workflow tes drone yang sudah
+  terbukti (run #1: 90 frame dalam 8m36s, rata-rata 18,86 detik/frame).
+- Workflow: `gh-push/.github/workflows/blender-lustig-test.yml`,
+  nama "Blender Lustig Test", workflow_dispatch, timeout 120 menit,
+  5 job paralel, artifact `blender-lustig-3s-chunk-N`, retention 7 hari.
+- Waktu lokal per frame: 52-56 detik/frame di VM (frame 45: 56 detik v1,
+  52 detik v2). Proyeksi VM 90 frame sekitar 1,3-1,4 jam; proyeksi GitHub
+  sekitar 19 detik/frame (angka tes drone), wall time sekitar 9 menit —
+  perkiraan, belum terukur untuk scene ini.
+- Bukti: workflow di `gh-push/`, `build_lustig.py`.
+
+## File
+- `build_lustig.py` — scene builder (Blender 4.5.3, EEVEE_NEXT 16 sample)
+- `scene_lustig.blend` — hasil build lokal (1,7 MB, TIDAK di-push)
+- `renders/still_0045.png` — still lokal final (v3, 1080x1920)
+- `ref/lustig_55s.png`, `ref/lustig_57s.png`, `ref/lustig_59s.png` —
+  referensi dari lustig-final.mp4 detik 55-60
+- `gh-push/.github/workflows/blender-lustig-test.yml` — workflow GitHub
+- `gh-push/lustig-test/build_lustig.py` — salinan script untuk di-push
+- `gh-push/lustig-test/README.md` — penjelasan singkat untuk repo
+
+## Langkah berikutnya (butuh browser sebagai Nbill27)
+1. Upload 3 file dari `gh-push/` ke repo https://github.com/Nbill27/blender-test,
+   branch main, path persis `.github/workflows/blender-lustig-test.yml`,
+   `lustig-test/build_lustig.py`, `lustig-test/README.md`. Jangan upload
+   `scene_lustig.blend`. Jangan sentuh repo 3d-rendering, jangan merge PR #13.
+2. Jalankan workflow "Blender Lustig Test" dari main, catat waktu mulai/selesai
+   tiap job dan isi timing-lustig-chunk-0..4.txt.
+3. Unduh 5 artifact, rakit klip MP4 3 detik 1080x1920 30 fps, verifikasi
+   ffprobe (90 frame, 3.000 detik), baca 3 still (awal, tengah, akhir),
+   buktikan menara dan Lustig bergerak / kamera bergerak.
